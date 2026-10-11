@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ff0000">
+  <title>RGB Screen</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+
+    body {
+      background: #ff0000;
+      overflow: hidden;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body.idle {
+      cursor: none;
+    }
+
+    #hint {
+      position: fixed;
+      left: 50%;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      font: 500 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: opacity 1s;
+    }
+
+    #hint.hidden {
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="hint">Tap for fullscreen · Space to pause</div>
+
+  <script>
+    // One full trip around the color wheel takes this many seconds.
+    const SECONDS_PER_CYCLE = 10;
+
+    const hint = document.getElementById("hint");
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+
+    let hue = 0;
+    let paused = false;
+    let lastFrame = performance.now();
+    let lastThemeUpdate = 0;
+
+    function frame(now) {
+      if (!paused) {
+        hue = (hue + ((now - lastFrame) / 1000) * (360 / SECONDS_PER_CYCLE)) % 360;
+      }
+      lastFrame = now;
+
+      const color = `hsl(${hue.toFixed(1)}, 100%, 50%)`;
+      document.body.style.backgroundColor = color;
+
+      // Tint the phone's browser bar to match, a few times a second.
+      if (now - lastThemeUpdate > 100) {
+        themeColor.content = color;
+        lastThemeUpdate = now;
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+
+    if (!document.fullscreenEnabled) {
+      hint.textContent = "Space to pause";
+    }
+
+    // Hide the hint and the mouse cursor when nothing is happening.
+    let idleTimer;
+    function wake() {
+      document.body.classList.remove("idle");
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => document.body.classList.add("idle"), 2000);
+    }
+    setTimeout(() => hint.classList.add("hidden"), 3000);
+    document.addEventListener("mousemove", wake);
+    wake();
+
+    document.addEventListener("click", () => {
+      if (!document.fullscreenEnabled) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      } else {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        paused = !paused;
+      }
+    });
+  </script>
+</body>
+</html>
